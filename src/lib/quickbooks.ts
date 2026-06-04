@@ -20,16 +20,19 @@ export type QuickBooksSession = {
 
 export type CustomerSummary = {
   id: string;
+  syncToken: string;
   displayName: string;
   companyName: string;
   email: string;
   phone: string;
   balance: number | null;
   active: boolean | null;
+  lastUpdatedTime: string;
 };
 
 type QuickBooksCustomer = {
   Id?: string;
+  SyncToken?: string;
   DisplayName?: string;
   FullyQualifiedName?: string;
   CompanyName?: string;
@@ -41,6 +44,9 @@ type QuickBooksCustomer = {
   };
   Balance?: number | string;
   Active?: boolean;
+  MetaData?: {
+    LastUpdatedTime?: string;
+  };
 };
 
 type QuickBooksQueryResponse = {
@@ -54,6 +60,11 @@ type QuickBooksQueryResponse = {
       code?: string;
     }>;
   };
+};
+
+type QuickBooksCustomerResponse = {
+  Customer?: QuickBooksCustomer;
+  Fault?: QuickBooksQueryResponse["Fault"];
 };
 
 type SessionStore = Map<string, QuickBooksSession>;
@@ -186,7 +197,8 @@ export function getSecureCookieSetting(origin: string) {
 export async function fetchCustomerSummaries(session: QuickBooksSession) {
   await refreshSessionIfNeeded(session);
 
-  const query = "SELECT * FROM Customer STARTPOSITION 1 MAXRESULTS 20";
+  const query =
+    "SELECT * FROM Customer ORDERBY MetaData.LastUpdatedTime DESC STARTPOSITION 1 MAXRESULTS 20";
   const url = new URL(
     `/v3/company/${session.realmId}/query`,
     getQuickBooksApiBaseUrl(),
@@ -212,7 +224,51 @@ export async function fetchCustomerSummaries(session: QuickBooksSession) {
     throw new Error(formatQuickBooksError(body, response.status));
   }
 
-  return (body.QueryResponse?.Customer ?? []).map(toCustomerSummary);
+  return (body.QueryResponse?.Customer ?? [])
+    .map(toCustomerSummary)
+    .sort(compareCustomerUpdatedTimeDescending);
+}
+
+export async function renameCustomer(
+  session: QuickBooksSession,
+  customerId: string,
+  syncToken: string,
+  displayName: string,
+) {
+  await refreshSessionIfNeeded(session);
+
+  const url = new URL(
+    `/v3/company/${session.realmId}/customer`,
+    getQuickBooksApiBaseUrl(),
+  );
+  url.searchParams.set(
+    "minorversion",
+    process.env.QUICKBOOKS_MINOR_VERSION ?? "75",
+  );
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${session.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      DisplayName: displayName,
+      Id: customerId,
+      SyncToken: syncToken,
+      sparse: true,
+    }),
+    cache: "no-store",
+  });
+
+  const body = await parseResponseBody<QuickBooksCustomerResponse>(response);
+
+  if (!response.ok) {
+    throw new Error(formatQuickBooksError(body, response.status));
+  }
+
+  return body.Customer ? toCustomerSummary(body.Customer) : undefined;
 }
 
 async function refreshSessionIfNeeded(session: QuickBooksSession) {
@@ -301,6 +357,7 @@ function toCustomerSummary(customer: QuickBooksCustomer): CustomerSummary {
 
   return {
     id: customer.Id ?? "unknown",
+    syncToken: customer.SyncToken ?? "",
     displayName:
       customer.DisplayName ?? customer.FullyQualifiedName ?? "Unnamed customer",
     companyName: customer.CompanyName ?? "",
@@ -308,7 +365,23 @@ function toCustomerSummary(customer: QuickBooksCustomer): CustomerSummary {
     phone: customer.PrimaryPhone?.FreeFormNumber ?? "",
     balance: Number.isFinite(balance) ? balance : null,
     active: typeof customer.Active === "boolean" ? customer.Active : null,
+    lastUpdatedTime: customer.MetaData?.LastUpdatedTime ?? "",
   };
+}
+
+function compareCustomerUpdatedTimeDescending(
+  first: CustomerSummary,
+  second: CustomerSummary,
+) {
+  return (
+    getSortableTime(second.lastUpdatedTime) -
+    getSortableTime(first.lastUpdatedTime)
+  );
+}
+
+function getSortableTime(value: string) {
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
 }
 
 function requireEnv(name: string) {

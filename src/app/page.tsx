@@ -128,7 +128,7 @@ function SignedInView({
           <p className="text-sm font-medium text-[#596151]">
             {getQuickBooksEnvironment()} company
           </p>
-          <h1 className="mt-1 text-3xl font-semibold">Customer list</h1>
+          <h1 className="mt-1 text-3xl font-semibold">Client list</h1>
         </div>
         <p className="font-mono text-xs text-[#596151]">Realm {realmId}</p>
       </div>
@@ -149,7 +149,7 @@ function CustomerTable({ customers }: { customers: CustomerSummary[] }) {
     return (
       <div className="rounded border border-[#d9ddce] bg-white px-5 py-8 text-sm text-[#596151]">
         The Customer query succeeded, but this company did not return any
-        customers.
+        clients.
       </div>
     );
   }
@@ -157,15 +157,17 @@ function CustomerTable({ customers }: { customers: CustomerSummary[] }) {
   return (
     <div className="overflow-hidden rounded border border-[#d9ddce] bg-white">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[980px] border-collapse text-left text-sm">
           <thead className="bg-[#eef1e7] text-xs uppercase tracking-[0.08em] text-[#596151]">
             <tr>
               <th className="px-4 py-3 font-semibold">Name</th>
+              <th className="px-4 py-3 font-semibold">Modified</th>
               <th className="px-4 py-3 font-semibold">Company</th>
               <th className="px-4 py-3 font-semibold">Email</th>
               <th className="px-4 py-3 font-semibold">Phone</th>
               <th className="px-4 py-3 text-right font-semibold">Balance</th>
               <th className="px-4 py-3 font-semibold">Status</th>
+              <th className="px-4 py-3 font-semibold">Rename</th>
             </tr>
           </thead>
           <tbody>
@@ -176,6 +178,9 @@ function CustomerTable({ customers }: { customers: CustomerSummary[] }) {
               >
                 <td className="px-4 py-3 font-medium">
                   {customer.displayName}
+                </td>
+                <td className="px-4 py-3 font-mono text-xs text-[#596151]">
+                  {formatDateTime(customer.lastUpdatedTime)}
                 </td>
                 <td className="px-4 py-3 text-[#596151]">
                   {customer.companyName || "-"}
@@ -195,6 +200,45 @@ function CustomerTable({ customers }: { customers: CustomerSummary[] }) {
                     : customer.active
                       ? "Active"
                       : "Inactive"}
+                </td>
+                <td className="px-4 py-3">
+                  <form
+                    action="/customers/rename"
+                    method="post"
+                    className="flex min-w-[260px] items-center gap-2"
+                  >
+                    <input
+                      type="hidden"
+                      name="customerId"
+                      value={customer.id}
+                    />
+                    <input
+                      type="hidden"
+                      name="syncToken"
+                      value={customer.syncToken}
+                    />
+                    <label
+                      className="sr-only"
+                      htmlFor={`rename-${customer.id}`}
+                    >
+                      Rename {customer.displayName}
+                    </label>
+                    <input
+                      id={`rename-${customer.id}`}
+                      name="displayName"
+                      defaultValue={customer.displayName}
+                      maxLength={500}
+                      required
+                      className="h-9 w-40 rounded border border-[#c7cebd] bg-white px-3 text-sm outline-none transition focus:border-[#2ca01c] focus:ring-2 focus:ring-[#2ca01c]/20"
+                    />
+                    <button
+                      type="submit"
+                      className="h-9 rounded bg-[#2ca01c] px-3 text-sm font-semibold text-white transition hover:bg-[#238719] disabled:cursor-not-allowed disabled:bg-[#9ebc97]"
+                      disabled={!customer.syncToken}
+                    >
+                      Rename
+                    </button>
+                  </form>
                 </td>
               </tr>
             ))}
@@ -247,6 +291,13 @@ function getPageMessage({
     };
   }
 
+  if (noticeCode === "renamed") {
+    return {
+      kind: "notice" as const,
+      text: "Client renamed in QuickBooks Online.",
+    };
+  }
+
   if (!errorCode) {
     return null;
   }
@@ -263,6 +314,10 @@ function getPageMessage({
       "The QuickBooks sign-in attempt expired or failed validation. Please try again.",
     quickbooks_token:
       "QuickBooks authorized the app, but the token exchange failed. Check the redirect URI and app credentials.",
+    rename_auth: "Sign in with QuickBooks before renaming clients.",
+    rename_failed:
+      "QuickBooks could not rename that client. The name may already exist, or the row may need to be refreshed.",
+    rename_invalid: "Enter a client name before renaming.",
   };
 
   return {
@@ -280,4 +335,20 @@ function formatBalance(balance: number | null) {
     currency: "USD",
     style: "currency",
   }).format(balance);
+}
+
+function formatDateTime(value: string) {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
