@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   QUICKBOOKS_SESSION_COOKIE,
+  encodeQuickBooksSessionCookie,
+  getSecureCookieSetting,
+  getSessionCookieMaxAge,
   getQuickBooksSession,
   renameCustomer,
 } from "@/lib/quickbooks";
@@ -27,7 +30,20 @@ export async function POST(request: NextRequest) {
 
   try {
     await renameCustomer(session, customerId, syncToken, displayName);
-    return redirectHomeWithStatus(request, "renamed");
+    const response = redirectHomeWithStatus(request, "renamed");
+    response.cookies.set(
+      QUICKBOOKS_SESSION_COOKIE,
+      encodeQuickBooksSessionCookie(session),
+      {
+        httpOnly: true,
+        maxAge: getSessionCookieMaxAge(session),
+        path: "/",
+        sameSite: "lax",
+        secure: getSecureCookieSetting(request.nextUrl.origin),
+      },
+    );
+
+    return response;
   } catch {
     return redirectHomeWithStatus(request, "rename_failed");
   }

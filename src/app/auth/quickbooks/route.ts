@@ -5,6 +5,7 @@ import {
   QuickBooksConfigError,
   buildQuickBooksAuthorizationUrl,
   createQuickBooksSession,
+  encodeQuickBooksSessionCookie,
   exchangeAuthorizationCode,
   getSecureCookieSetting,
   getSessionCookieMaxAge,
@@ -76,13 +77,17 @@ async function completeQuickBooksAuthorization(
     const session = createQuickBooksSession(realmId, tokenResponse);
     const response = redirectHomeWithStatus(request, "connected");
 
-    response.cookies.set(QUICKBOOKS_SESSION_COOKIE, session.id, {
-      httpOnly: true,
-      maxAge: getSessionCookieMaxAge(session),
-      path: "/",
-      sameSite: "lax",
-      secure: getSecureCookieSetting(request.nextUrl.origin),
-    });
+    response.cookies.set(
+      QUICKBOOKS_SESSION_COOKIE,
+      encodeQuickBooksSessionCookie(session),
+      {
+        httpOnly: true,
+        maxAge: getSessionCookieMaxAge(session),
+        path: "/",
+        sameSite: "lax",
+        secure: getSecureCookieSetting(request.nextUrl.origin),
+      },
+    );
     response.cookies.delete(QUICKBOOKS_STATE_COOKIE);
 
     return response;

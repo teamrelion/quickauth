@@ -46,9 +46,9 @@ export default function PrivacyPage() {
               Storage
             </h2>
             <p className="mt-2">
-              This demo keeps OAuth tokens in a server-side in-memory session
-              and stores only an HTTP-only session identifier in your browser.
-              Signing out clears the local session.
+              This demo stores OAuth tokens in an encrypted, HTTP-only cookie in
+              your browser so the app can work across serverless requests.
+              Signing out clears the local session cookie.
             </p>
           </section>
 

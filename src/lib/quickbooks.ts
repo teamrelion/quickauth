@@ -1,3 +1,11 @@
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+} from "crypto";
+import { deflateRawSync, inflateRawSync } from "zlib";
+
 export type QuickBooksEnvironment = "sandbox" | "production";
 
 type TokenResponse = {
@@ -66,16 +74,6 @@ type QuickBooksCustomerResponse = {
   Customer?: QuickBooksCustomer;
   Fault?: QuickBooksQueryResponse["Fault"];
 };
-
-type SessionStore = Map<string, QuickBooksSession>;
-
-const globalForSessions = globalThis as typeof globalThis & {
-  __quickbooksSessions?: SessionStore;
-};
-
-const sessions =
-  globalForSessions.__quickbooksSessions ??
-  (globalForSessions.__quickbooksSessions = new Map());
 
 export const QUICKBOOKS_SESSION_COOKIE = "quickbooks_session";
 export const QUICKBOOKS_STATE_COOKIE = "quickbooks_oauth_state";
@@ -155,32 +153,44 @@ export function createQuickBooksSession(
     connectedAt: now,
   };
 
-  sessions.set(session.id, session);
   return session;
 }
 
-export function getQuickBooksSession(sessionId?: string) {
-  if (!sessionId) {
+export function encodeQuickBooksSessionCookie(session: QuickBooksSession) {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", getSessionEncryptionKey(), iv);
+  const plaintext = deflateRawSync(
+    Buffer.from(JSON.stringify(session), "utf8"),
+  );
+  const ciphertext = Buffer.concat([
+    cipher.update(plaintext),
+    cipher.final(),
+  ]);
+  const authTag = cipher.getAuthTag();
+
+  return [
+    "v1",
+    toBase64Url(iv),
+    toBase64Url(authTag),
+    toBase64Url(ciphertext),
+  ].join(".");
+}
+
+export function getQuickBooksSession(cookieValue?: string) {
+  if (!cookieValue) {
     return undefined;
   }
 
-  const session = sessions.get(sessionId);
+  const session = decodeQuickBooksSessionCookie(cookieValue);
   if (!session) {
     return undefined;
   }
 
   if (session.refreshTokenExpiresAt <= Date.now()) {
-    sessions.delete(sessionId);
     return undefined;
   }
 
   return session;
-}
-
-export function deleteQuickBooksSession(sessionId?: string) {
-  if (sessionId) {
-    sessions.delete(sessionId);
-  }
 }
 
 export function getSessionCookieMaxAge(session: QuickBooksSession) {
@@ -269,6 +279,22 @@ export async function renameCustomer(
   }
 
   return body.Customer ? toCustomerSummary(body.Customer) : undefined;
+}
+
+export async function buildQuickBooksMcpPrompt(session: QuickBooksSession) {
+  await refreshSessionIfNeeded(session);
+
+  return [
+    "This is my refresh token, access token, and realm ID for QuickBooks Online.",
+    "Please use them for authentication wherever the ~/quickbooks-online-mcp-server or any QuickBooks MCP server configuration needs them.",
+    "",
+    `Realm ID: ${session.realmId}`,
+    `Access token: ${session.accessToken}`,
+    `Refresh token: ${session.refreshToken}`,
+    "",
+    "If the access token is expired, please use the refresh token to obtain a new access token.",
+    "If the refresh token is expired, revoked, missing, or the QuickBooks MCP server needs a fresh authorization set, please prompt me to go back to the QuickAuth web tool, sign in again if needed, and copy a fresh version of this prompt.",
+  ].join("\n");
 }
 
 async function refreshSessionIfNeeded(session: QuickBooksSession) {
@@ -382,6 +408,71 @@ function compareCustomerUpdatedTimeDescending(
 function getSortableTime(value: string) {
   const time = new Date(value).getTime();
   return Number.isNaN(time) ? 0 : time;
+}
+
+function decodeQuickBooksSessionCookie(cookieValue: string) {
+  try {
+    const [version, iv, authTag, ciphertext] = cookieValue.split(".");
+    if (version !== "v1" || !iv || !authTag || !ciphertext) {
+      return undefined;
+    }
+
+    const decipher = createDecipheriv(
+      "aes-256-gcm",
+      getSessionEncryptionKey(),
+      fromBase64Url(iv),
+    );
+    decipher.setAuthTag(fromBase64Url(authTag));
+
+    const compressed = Buffer.concat([
+      decipher.update(fromBase64Url(ciphertext)),
+      decipher.final(),
+    ]);
+    const parsed = JSON.parse(inflateRawSync(compressed).toString("utf8"));
+
+    return isQuickBooksSession(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isQuickBooksSession(value: unknown): value is QuickBooksSession {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const session = value as Partial<QuickBooksSession>;
+  return (
+    typeof session.id === "string" &&
+    typeof session.realmId === "string" &&
+    typeof session.accessToken === "string" &&
+    typeof session.refreshToken === "string" &&
+    typeof session.accessTokenExpiresAt === "number" &&
+    typeof session.refreshTokenExpiresAt === "number" &&
+    typeof session.connectedAt === "number"
+  );
+}
+
+function getSessionEncryptionKey() {
+  const secret =
+    process.env.QUICKAUTH_SESSION_SECRET ??
+    process.env.QUICKBOOKS_CLIENT_SECRET;
+
+  if (!secret) {
+    throw new QuickBooksConfigError(
+      "Missing QUICKAUTH_SESSION_SECRET or QUICKBOOKS_CLIENT_SECRET.",
+    );
+  }
+
+  return createHash("sha256").update(secret).digest();
+}
+
+function toBase64Url(value: Buffer) {
+  return value.toString("base64url");
+}
+
+function fromBase64Url(value: string) {
+  return Buffer.from(value, "base64url");
 }
 
 function requireEnv(name: string) {

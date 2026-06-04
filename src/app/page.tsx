@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { CopyMcpPromptButton } from "./copy-mcp-prompt-button";
 import {
   QUICKBOOKS_SESSION_COOKIE,
   CustomerSummary,
@@ -29,7 +30,7 @@ export default async function Home({ searchParams }: HomeProps) {
   return (
     <main className="min-h-screen bg-[#f6f7f2] text-[#151713]">
       <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-5 py-6 sm:px-8">
-        <header className="flex items-center justify-between border-b border-[#d9ddce] pb-4">
+        <header className="flex flex-col gap-4 border-b border-[#d9ddce] pb-4 sm:flex-row sm:items-start sm:justify-between">
           <Link href="/" className="flex items-center gap-3 font-semibold">
             <span className="grid size-9 place-items-center rounded bg-[#2ca01c] text-sm font-bold text-white">
               qa
@@ -37,12 +38,15 @@ export default async function Home({ searchParams }: HomeProps) {
             <span>QuickAuth</span>
           </Link>
           {session ? (
-            <a
-              href="/auth/signout"
-              className="rounded border border-[#b9c0ae] px-4 py-2 text-sm font-medium transition hover:border-[#2ca01c] hover:text-[#1d7f14]"
-            >
-              Sign out
-            </a>
+            <div className="flex flex-wrap items-start gap-3 sm:justify-end">
+              <CopyMcpPromptButton />
+              <a
+                href="/auth/signout"
+                className="rounded border border-[#b9c0ae] px-4 py-2 text-sm font-medium transition hover:border-[#2ca01c] hover:text-[#1d7f14]"
+              >
+                Sign out
+              </a>
+            </div>
           ) : null}
         </header>
 
