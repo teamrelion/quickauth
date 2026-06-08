@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     return response;
   } catch {
     return NextResponse.json(
-      { error: "Unable to prepare QuickBooks tokens for copying." },
+      { error: "Unable to prepare the setup prompt for copying." },
       { status: 500 },
     );
   }

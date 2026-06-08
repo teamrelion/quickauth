@@ -28,6 +28,22 @@ pnpm dev
 Open [http://localhost:3000](http://localhost:3000), then choose
 "Sign in with QuickBooks".
 
+## MCP Setup Prompt
+
+After sign-in, the signed-in page can copy a setup prompt for Claude Code or
+Codex. The prompt includes:
+
+- Cross-platform instructions for installing and building the cloned
+  QuickBooks Online MCP server.
+- User-wide/global registration steps for Claude Code and Codex.
+- The QuickBooks realm ID, access token, refresh token, token expiry times,
+  client ID, client secret, and environment needed by the local MCP server.
+
+The local MCP server needs the same QuickBooks OAuth client ID and client secret
+that issued the refresh token. If you do not want to expose a QuickBooks app
+client secret to customers, use a hosted refresh service/proxy model instead of
+local refresh.
+
 ## Vercel
 
 Before deploying, add the same environment variables in the Vercel project

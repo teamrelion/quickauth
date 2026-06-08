@@ -24,18 +24,18 @@ export function CopyMcpPromptButton() {
       const body = (await response.json()) as PromptResponse;
 
       if (!response.ok || !body.prompt) {
-        throw new Error(body.error ?? "Unable to copy QuickBooks tokens.");
+        throw new Error(body.error ?? "Unable to copy setup prompt.");
       }
 
       await copyText(body.prompt);
       setCopyState("copied");
-      setMessage("MCP prompt copied.");
+      setMessage("Setup prompt copied.");
     } catch (error) {
       setCopyState("error");
       setMessage(
         error instanceof Error
           ? error.message
-          : "Unable to copy QuickBooks tokens.",
+          : "Unable to copy setup prompt.",
       );
     }
   }
@@ -48,7 +48,7 @@ export function CopyMcpPromptButton() {
         disabled={copyState === "copying"}
         className="rounded bg-[#151713] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#2f332b] disabled:cursor-not-allowed disabled:bg-[#8c9285]"
       >
-        {copyState === "copying" ? "Copying..." : "Copy MCP prompt"}
+        {copyState === "copying" ? "Copying..." : "Copy setup prompt"}
       </button>
       <p
         aria-live="polite"
