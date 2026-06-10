@@ -9,7 +9,11 @@ type PromptResponse = {
   error?: string;
 };
 
-export function CopyMcpPromptButton() {
+export function CopyMcpPromptButton({
+  align = "end",
+}: {
+  align?: "start" | "end";
+}) {
   const [copyState, setCopyState] = useState<CopyState>("idle");
   const [message, setMessage] = useState("");
 
@@ -41,7 +45,11 @@ export function CopyMcpPromptButton() {
   }
 
   return (
-    <div className="flex flex-col items-end gap-1">
+    <div
+      className={`flex flex-col gap-1 ${
+        align === "start" ? "items-start" : "items-end"
+      }`}
+    >
       <button
         type="button"
         onClick={copyPrompt}
@@ -52,7 +60,7 @@ export function CopyMcpPromptButton() {
       </button>
       <p
         aria-live="polite"
-        className={`min-h-4 text-right text-xs ${
+        className={`min-h-4 text-xs ${
           copyState === "error" ? "text-[#84241d]" : "text-[#596151]"
         }`}
       >

@@ -75,6 +75,14 @@ type QuickBooksCustomerResponse = {
   Fault?: QuickBooksQueryResponse["Fault"];
 };
 
+type QuickBooksCompanyInfoResponse = {
+  CompanyInfo?: {
+    CompanyName?: string;
+    LegalName?: string;
+  };
+  Fault?: QuickBooksQueryResponse["Fault"];
+};
+
 export const QUICKBOOKS_SESSION_COOKIE = "quickbooks_session";
 export const QUICKBOOKS_STATE_COOKIE = "quickbooks_oauth_state";
 
@@ -237,6 +245,40 @@ export async function fetchCustomerSummaries(session: QuickBooksSession) {
   return (body.QueryResponse?.Customer ?? [])
     .map(toCustomerSummary)
     .sort(compareCustomerUpdatedTimeDescending);
+}
+
+export async function fetchCompanyName(session: QuickBooksSession) {
+  await refreshSessionIfNeeded(session);
+
+  const url = new URL(
+    `/v3/company/${session.realmId}/companyinfo/${session.realmId}`,
+    getQuickBooksApiBaseUrl(),
+  );
+  url.searchParams.set(
+    "minorversion",
+    process.env.QUICKBOOKS_MINOR_VERSION ?? "75",
+  );
+
+  const response = await fetch(url, {
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${session.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+  });
+
+  const body = await parseResponseBody<QuickBooksCompanyInfoResponse>(response);
+
+  if (!response.ok) {
+    throw new Error(formatQuickBooksError(body, response.status));
+  }
+
+  return (
+    body.CompanyInfo?.CompanyName ??
+    body.CompanyInfo?.LegalName ??
+    "QuickBooks company"
+  );
 }
 
 export async function renameCustomer(
