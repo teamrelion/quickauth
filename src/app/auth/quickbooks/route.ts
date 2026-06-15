@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  QUICKBOOKS_FORCE_PROMPT_COOKIE,
   QUICKBOOKS_SESSION_COOKIE,
   QUICKBOOKS_STATE_COOKIE,
   QuickBooksConfigError,
@@ -29,8 +30,11 @@ export async function GET(request: NextRequest) {
 
 function startQuickBooksAuthorization(request: NextRequest) {
   try {
+    const forcePrompt =
+      request.cookies.get(QUICKBOOKS_FORCE_PROMPT_COOKIE)?.value === "1";
     const { state, url } = buildQuickBooksAuthorizationUrl(
       request.nextUrl.origin,
+      { forcePrompt },
     );
     const response = NextResponse.redirect(url);
 
@@ -41,6 +45,7 @@ function startQuickBooksAuthorization(request: NextRequest) {
       sameSite: "lax",
       secure: getSecureCookieSetting(request.nextUrl.origin),
     });
+    response.cookies.delete(QUICKBOOKS_FORCE_PROMPT_COOKIE);
 
     return response;
   } catch (error) {

@@ -85,6 +85,7 @@ type QuickBooksCompanyInfoResponse = {
 
 export const QUICKBOOKS_SESSION_COOKIE = "quickbooks_session";
 export const QUICKBOOKS_STATE_COOKIE = "quickbooks_oauth_state";
+export const QUICKBOOKS_FORCE_PROMPT_COOKIE = "quickbooks_force_prompt";
 
 const AUTHORIZATION_ENDPOINT = "https://appcenter.intuit.com/connect/oauth2";
 const TOKEN_ENDPOINT =
@@ -116,7 +117,10 @@ export function getQuickBooksRedirectUri(origin: string) {
   return process.env.QUICKBOOKS_REDIRECT_URI ?? `${origin}/auth/quickbooks`;
 }
 
-export function buildQuickBooksAuthorizationUrl(origin: string) {
+export function buildQuickBooksAuthorizationUrl(
+  origin: string,
+  options: { forcePrompt?: boolean } = {},
+) {
   const clientId = requireEnv("QUICKBOOKS_CLIENT_ID");
   const redirectUri = getQuickBooksRedirectUri(origin);
   const state = crypto.randomUUID();
@@ -127,6 +131,10 @@ export function buildQuickBooksAuthorizationUrl(origin: string) {
   authorizationUrl.searchParams.set("scope", ACCOUNTING_SCOPE);
   authorizationUrl.searchParams.set("redirect_uri", redirectUri);
   authorizationUrl.searchParams.set("state", state);
+
+  if (options.forcePrompt) {
+    authorizationUrl.searchParams.set("prompt", "login select_account");
+  }
 
   return {
     state,

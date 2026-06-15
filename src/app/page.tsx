@@ -197,7 +197,7 @@ function getPageMessage({
   if (noticeCode === "signed_out") {
     return {
       kind: "notice" as const,
-      text: "Signed out.",
+      text: "Signed out. Your next QuickBooks sign-in will ask Intuit to show the login and account picker.",
     };
   }
 
