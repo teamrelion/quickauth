@@ -90,6 +90,8 @@ export const QUICKBOOKS_FORCE_PROMPT_COOKIE = "quickbooks_force_prompt";
 const AUTHORIZATION_ENDPOINT = "https://appcenter.intuit.com/connect/oauth2";
 const TOKEN_ENDPOINT =
   "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
+const REVOCATION_ENDPOINT =
+  "https://developer.api.intuit.com/v2/oauth2/tokens/revoke";
 const ACCOUNTING_SCOPE = "com.intuit.quickbooks.accounting";
 const DEFAULT_REFRESH_TOKEN_SECONDS = 60 * 60 * 24 * 100;
 const TOKEN_EXPIRY_BUFFER_MS = 60 * 1000;
@@ -329,6 +331,55 @@ export async function renameCustomer(
   }
 
   return body.Customer ? toCustomerSummary(body.Customer) : undefined;
+}
+
+export async function revokeQuickBooksSession(session: QuickBooksSession) {
+  const errors: Error[] = [];
+  const tokens = Array.from(
+    new Set([session.refreshToken, session.accessToken].filter(Boolean)),
+  );
+
+  for (const token of tokens) {
+    try {
+      await revokeQuickBooksToken(token, session.realmId);
+      return;
+    } catch (error) {
+      errors.push(
+        error instanceof Error ? error : new Error("QuickBooks revoke failed."),
+      );
+    }
+  }
+
+  throw errors[0] ?? new Error("QuickBooks revoke failed.");
+}
+
+async function revokeQuickBooksToken(token: string, realmId: string) {
+  const clientId = requireEnv("QUICKBOOKS_CLIENT_ID");
+  const clientSecret = requireEnv("QUICKBOOKS_CLIENT_SECRET");
+  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString(
+    "base64",
+  );
+  const url = new URL(REVOCATION_ENDPOINT);
+  url.searchParams.set("realmId", realmId);
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Basic ${credentials}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ token }),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const body = await parseResponseBody<{ error?: string }>(response);
+    throw new Error(
+      body.error ??
+        `QuickBooks revoke request failed with status ${response.status}.`,
+    );
+  }
 }
 
 export async function buildQuickBooksMcpPrompt(session: QuickBooksSession) {

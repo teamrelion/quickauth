@@ -42,7 +42,7 @@ export default async function Home({ searchParams }: HomeProps) {
                 href="/auth/signout"
                 className="rounded border border-[#b9c0ae] px-4 py-2 text-sm font-medium transition hover:border-[#2ca01c] hover:text-[#1d7f14]"
               >
-                Sign out
+                Disconnect and sign out
               </a>
             </div>
           ) : null}
