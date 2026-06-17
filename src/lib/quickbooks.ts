@@ -103,6 +103,18 @@ export class QuickBooksConfigError extends Error {
   }
 }
 
+export class QuickBooksTokenRequestError extends Error {
+  status: number;
+  code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "QuickBooksTokenRequestError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
 export function getQuickBooksEnvironment(): QuickBooksEnvironment {
   return process.env.QUICKBOOKS_ENVIRONMENT === "production"
     ? "production"
@@ -216,6 +228,10 @@ export function getSessionCookieMaxAge(session: QuickBooksSession) {
     0,
     Math.floor((session.refreshTokenExpiresAt - Date.now()) / 1000),
   );
+}
+
+export function isQuickBooksAccessTokenFresh(session: QuickBooksSession) {
+  return session.accessTokenExpiresAt - TOKEN_EXPIRY_BUFFER_MS > Date.now();
 }
 
 export function getSecureCookieSetting(origin: string) {
@@ -472,7 +488,7 @@ export async function buildQuickBooksMcpPrompt(session: QuickBooksSession) {
 }
 
 async function refreshSessionIfNeeded(session: QuickBooksSession) {
-  if (session.accessTokenExpiresAt - TOKEN_EXPIRY_BUFFER_MS > Date.now()) {
+  if (isQuickBooksAccessTokenFresh(session)) {
     return;
   }
 
@@ -519,11 +535,19 @@ async function postTokenRequest(params: Record<string, string>) {
       tokenResponse.error_description ??
       tokenResponse.error ??
       `QuickBooks token request failed with status ${response.status}.`;
-    throw new Error(message);
+    throw new QuickBooksTokenRequestError(
+      message,
+      response.status,
+      tokenResponse.error,
+    );
   }
 
   if (!tokenResponse.access_token || !tokenResponse.refresh_token) {
-    throw new Error("QuickBooks did not return the expected OAuth tokens.");
+    throw new QuickBooksTokenRequestError(
+      "QuickBooks did not return the expected OAuth tokens.",
+      response.status,
+      tokenResponse.error,
+    );
   }
 
   return tokenResponse;

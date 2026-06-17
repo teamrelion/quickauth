@@ -6,6 +6,7 @@ import {
   fetchCompanyName,
   getQuickBooksEnvironment,
   getQuickBooksSession,
+  isQuickBooksAccessTokenFresh,
 } from "@/lib/quickbooks";
 
 type HomeProps = {
@@ -24,7 +25,10 @@ export default async function Home({ searchParams }: HomeProps) {
     cookieStore.get(QUICKBOOKS_SESSION_COOKIE)?.value,
   );
   const message = getPageMessage(params);
-  const companyResult = session ? await getCompanyForPage(session) : null;
+  const companyResult =
+    session && isQuickBooksAccessTokenFresh(session)
+      ? await getCompanyForPage(session)
+      : null;
 
   return (
     <main className="min-h-screen bg-[#f6f7f2] text-[#151713]">
@@ -197,7 +201,7 @@ function getPageMessage({
   if (noticeCode === "signed_out") {
     return {
       kind: "notice" as const,
-      text: "Signed out. Your next QuickBooks sign-in will ask Intuit to show the login and account picker.",
+      text: "Signed out of QuickAuth. QuickBooks was asked to end its browser session.",
     };
   }
 

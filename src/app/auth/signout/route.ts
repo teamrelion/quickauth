@@ -9,7 +9,6 @@ import {
 } from "@/lib/quickbooks";
 
 const FORCE_PROMPT_MAX_AGE_SECONDS = 60 * 60 * 24;
-const QUICKBOOKS_LOGOUT_URL = "https://qbo.intuit.com/app/logout";
 
 export async function GET(request: NextRequest) {
   const session = getQuickBooksSession(
@@ -27,7 +26,9 @@ export async function GET(request: NextRequest) {
 
   await revokeQuickBooksSession(session).catch(() => undefined);
 
-  const response = NextResponse.redirect(QUICKBOOKS_LOGOUT_URL);
+  const response = NextResponse.redirect(
+    new URL("/auth/signout/complete", request.url),
+  );
   clearQuickAuthCookies(response, request);
 
   return response;
