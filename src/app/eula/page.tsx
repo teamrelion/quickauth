@@ -15,7 +15,7 @@ export default function EulaPage() {
           End-User License Agreement
         </h1>
         <p className="mt-3 text-sm text-[#596151]">
-          Last updated: June 1, 2026
+          Last updated: June 17, 2026
         </p>
 
         <div className="mt-8 space-y-6 leading-7 text-[#30352c]">
@@ -57,9 +57,9 @@ export default function EulaPage() {
               Termination
             </h2>
             <p className="mt-2">
-              Your right to use the app ends when you sign out, revoke access in
-              QuickBooks, or stop using the app. We may also discontinue or
-              modify the app at any time.
+              Your right to use the app ends when you disconnect QuickBooks,
+              revoke access in QuickBooks, or stop using the app. We may also
+              discontinue or modify the app at any time.
             </p>
           </section>
         </div>

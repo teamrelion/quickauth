@@ -13,7 +13,7 @@ export default function PrivacyPage() {
         </Link>
         <h1 className="mt-8 text-3xl font-semibold">Privacy Policy</h1>
         <p className="mt-3 text-sm text-[#596151]">
-          Last updated: June 1, 2026
+          Last updated: June 17, 2026
         </p>
 
         <div className="mt-8 space-y-6 leading-7 text-[#30352c]">
@@ -47,8 +47,8 @@ export default function PrivacyPage() {
             </h2>
             <p className="mt-2">
               This demo stores OAuth tokens in an encrypted, HTTP-only cookie in
-              your browser so the app can work across serverless requests.
-              Signing out clears the local session cookie.
+              your browser so the app can work across serverless requests and
+              reuse a saved connection from the same browser.
             </p>
           </section>
 
@@ -57,9 +57,10 @@ export default function PrivacyPage() {
               Your Choices
             </h2>
             <p className="mt-2">
-              You can sign out of this app at any time. You can also revoke the
-              app&apos;s access from your Intuit or QuickBooks Online account
-              settings.
+              You can sign out of this app at any time. You can disconnect
+              QuickBooks from this app to delete the saved token and ask Intuit
+              to revoke access. You can also revoke the app&apos;s access from
+              your Intuit or QuickBooks Online account settings.
             </p>
           </section>
         </div>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  QUICKBOOKS_FORCE_PROMPT_COOKIE,
+  QUICKBOOKS_REMEMBERED_SESSION_COOKIE,
   QUICKBOOKS_SESSION_COOKIE,
   QUICKBOOKS_STATE_COOKIE,
   QuickBooksConfigError,
@@ -8,8 +8,8 @@ import {
   createQuickBooksSession,
   encodeQuickBooksSessionCookie,
   exchangeAuthorizationCode,
-  getSecureCookieSetting,
-  getSessionCookieMaxAge,
+  getQuickBooksSession,
+  getSessionCookieOptions,
 } from "@/lib/quickbooks";
 
 export const runtime = "nodejs";
@@ -29,12 +29,31 @@ export async function GET(request: NextRequest) {
 }
 
 function startQuickBooksAuthorization(request: NextRequest) {
+  const existingSession = getQuickBooksSession(
+    request.cookies.get(QUICKBOOKS_SESSION_COOKIE)?.value,
+  );
+  if (existingSession) {
+    return redirectHomeWithStatus(request, "connected");
+  }
+
+  const rememberedSessionCookie = request.cookies.get(
+    QUICKBOOKS_REMEMBERED_SESSION_COOKIE,
+  )?.value;
+  const rememberedSession = getQuickBooksSession(rememberedSessionCookie);
+  if (rememberedSession && rememberedSessionCookie) {
+    const response = redirectHomeWithStatus(request, "connected");
+    response.cookies.set(
+      QUICKBOOKS_SESSION_COOKIE,
+      rememberedSessionCookie,
+      getSessionCookieOptions(rememberedSession, request.nextUrl.origin),
+    );
+
+    return response;
+  }
+
   try {
-    const forcePrompt =
-      request.cookies.get(QUICKBOOKS_FORCE_PROMPT_COOKIE)?.value === "1";
     const { state, url } = buildQuickBooksAuthorizationUrl(
       request.nextUrl.origin,
-      { forcePrompt },
     );
     const response = NextResponse.redirect(url);
 
@@ -43,9 +62,8 @@ function startQuickBooksAuthorization(request: NextRequest) {
       maxAge: 10 * 60,
       path: "/",
       sameSite: "lax",
-      secure: getSecureCookieSetting(request.nextUrl.origin),
+      secure: request.nextUrl.protocol === "https:",
     });
-    response.cookies.delete(QUICKBOOKS_FORCE_PROMPT_COOKIE);
 
     return response;
   } catch (error) {
@@ -80,18 +98,22 @@ async function completeQuickBooksAuthorization(
       request.nextUrl.origin,
     );
     const session = createQuickBooksSession(realmId, tokenResponse);
+    const encodedSession = encodeQuickBooksSessionCookie(session);
+    const sessionCookieOptions = getSessionCookieOptions(
+      session,
+      request.nextUrl.origin,
+    );
     const response = redirectHomeWithStatus(request, "connected");
 
     response.cookies.set(
       QUICKBOOKS_SESSION_COOKIE,
-      encodeQuickBooksSessionCookie(session),
-      {
-        httpOnly: true,
-        maxAge: getSessionCookieMaxAge(session),
-        path: "/",
-        sameSite: "lax",
-        secure: getSecureCookieSetting(request.nextUrl.origin),
-      },
+      encodedSession,
+      sessionCookieOptions,
+    );
+    response.cookies.set(
+      QUICKBOOKS_REMEMBERED_SESSION_COOKIE,
+      encodedSession,
+      sessionCookieOptions,
     );
     response.cookies.delete(QUICKBOOKS_STATE_COOKIE);
 

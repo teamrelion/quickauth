@@ -46,7 +46,13 @@ export default async function Home({ searchParams }: HomeProps) {
                 href="/auth/signout"
                 className="rounded border border-[#b9c0ae] px-4 py-2 text-sm font-medium transition hover:border-[#2ca01c] hover:text-[#1d7f14]"
               >
-                Disconnect and sign out
+                Sign out
+              </a>
+              <a
+                href="/auth/disconnect"
+                className="rounded border border-[#b9c0ae] px-4 py-2 text-sm font-medium transition hover:border-[#d4483b] hover:text-[#84241d]"
+              >
+                Disconnect QuickBooks
               </a>
             </div>
           ) : null}
@@ -201,7 +207,14 @@ function getPageMessage({
   if (noticeCode === "signed_out") {
     return {
       kind: "notice" as const,
-      text: "Signed out of QuickAuth. QuickBooks was asked to end its browser session.",
+      text: "Signed out of QuickAuth on this browser. Your saved QuickBooks connection can be reused.",
+    };
+  }
+
+  if (noticeCode === "disconnected") {
+    return {
+      kind: "notice" as const,
+      text: "Disconnected from QuickBooks Online.",
     };
   }
 

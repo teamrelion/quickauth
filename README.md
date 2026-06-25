@@ -70,6 +70,9 @@ vercel --prod
 - The OAuth callback is handled by `/auth/quickbooks`.
 - Tokens are stored in an encrypted, HTTP-only cookie so the session can survive
   Vercel serverless function invocations without a database.
+- QuickAuth keeps a remembered encrypted token cookie after local sign-out so a
+  same-browser sign-in can reuse the existing QuickBooks connection. Use
+  "Disconnect QuickBooks" to revoke access and delete the remembered token.
 - `QUICKAUTH_SESSION_SECRET` is recommended for cookie encryption. If omitted,
   the app falls back to `QUICKBOOKS_CLIENT_SECRET`.
 - The signed-in page runs:

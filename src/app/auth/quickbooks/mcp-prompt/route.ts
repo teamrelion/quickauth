@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  QUICKBOOKS_REMEMBERED_SESSION_COOKIE,
   QUICKBOOKS_SESSION_COOKIE,
-  QUICKBOOKS_FORCE_PROMPT_COOKIE,
   QuickBooksConfigError,
   QuickBooksTokenRequestError,
   buildQuickBooksMcpPrompt,
   encodeQuickBooksSessionCookie,
-  getSecureCookieSetting,
-  getSessionCookieMaxAge,
   getQuickBooksSession,
+  getSessionCookieOptions,
 } from "@/lib/quickbooks";
 
 export const runtime = "nodejs";
@@ -34,17 +33,21 @@ export async function GET(request: NextRequest) {
         },
       },
     );
+    const encodedSession = encodeQuickBooksSessionCookie(session);
+    const sessionCookieOptions = getSessionCookieOptions(
+      session,
+      request.nextUrl.origin,
+    );
 
     response.cookies.set(
       QUICKBOOKS_SESSION_COOKIE,
-      encodeQuickBooksSessionCookie(session),
-      {
-        httpOnly: true,
-        maxAge: getSessionCookieMaxAge(session),
-        path: "/",
-        sameSite: "lax",
-        secure: getSecureCookieSetting(request.nextUrl.origin),
-      },
+      encodedSession,
+      sessionCookieOptions,
+    );
+    response.cookies.set(
+      QUICKBOOKS_REMEMBERED_SESSION_COOKIE,
+      encodedSession,
+      sessionCookieOptions,
     );
 
     return response;
@@ -63,13 +66,7 @@ export async function GET(request: NextRequest) {
 
     if (sessionExpired) {
       response.cookies.delete(QUICKBOOKS_SESSION_COOKIE);
-      response.cookies.set(QUICKBOOKS_FORCE_PROMPT_COOKIE, "1", {
-        httpOnly: true,
-        maxAge: 60 * 60 * 24,
-        path: "/",
-        sameSite: "lax",
-        secure: getSecureCookieSetting(request.nextUrl.origin),
-      });
+      response.cookies.delete(QUICKBOOKS_REMEMBERED_SESSION_COOKIE);
     }
 
     return response;
