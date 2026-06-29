@@ -105,7 +105,7 @@ function SignedOutView({
         </h1>
         <p className="mt-5 max-w-xl text-lg leading-8 text-[#596151]">
           {hasSavedConnection
-            ? "Continue with the QuickBooks connection saved in this browser. You can copy the prompt that registers your QuickBooks connection with Claude Code or Codex."
+            ? "You are signed out, but the QuickBooks integration remains connected in this browser. Continue when you want to copy the setup prompt again."
             : "Sign in with QuickBooks Online to authorize this app. After the OAuth flow completes, you can copy the prompt that registers your QuickBooks connection with Claude Code or Codex."}
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -225,7 +225,7 @@ function getPageMessage({
   if (noticeCode === "signed_out") {
     return {
       kind: "notice" as const,
-      text: "Signed out of QuickAuth on this browser. Your saved QuickBooks connection can be reused.",
+      text: "Signed out of QuickAuth. The QuickBooks integration is still connected and can be reused from this browser.",
     };
   }
 
