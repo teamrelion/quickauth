@@ -3,20 +3,14 @@ import {
   QUICKBOOKS_REMEMBERED_SESSION_COOKIE,
   QUICKBOOKS_SESSION_COOKIE,
   QUICKBOOKS_STATE_COOKIE,
-  getQuickBooksSession,
+  getStoredQuickBooksSession,
   revokeQuickBooksSession,
 } from "@/lib/quickbooks";
 
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
-  const session =
-    getQuickBooksSession(
-      request.cookies.get(QUICKBOOKS_SESSION_COOKIE)?.value,
-    ) ??
-    getQuickBooksSession(
-      request.cookies.get(QUICKBOOKS_REMEMBERED_SESSION_COOKIE)?.value,
-    );
+  const session = getStoredQuickBooksSession(request.cookies)?.session;
 
   if (session) {
     await revokeQuickBooksSession(session).catch(() => undefined);

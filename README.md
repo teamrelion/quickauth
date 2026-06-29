@@ -57,6 +57,21 @@ https://your-project.vercel.app/auth/quickbooks
 That exact URL must also be added to the Intuit Developer Portal redirect URI
 list.
 
+For Intuit app details, use these URLs:
+
+| Field | URL |
+| --- | --- |
+| Host domain | `your-project.vercel.app` |
+| Launch URL | `https://your-project.vercel.app/` |
+| Connect/Reconnect URL | `https://your-project.vercel.app/auth/quickbooks/install` |
+| Disconnect URL | `https://your-project.vercel.app/auth/disconnect` |
+| End User License Agreement URL | `https://your-project.vercel.app/eula` |
+| Privacy Policy URL | `https://your-project.vercel.app/privacy` |
+
+`/auth/quickbooks/install` starts a fresh authorization flow for QuickBooks
+App Store install/reconnect flows. It forces the Intuit login/company picker and
+then returns through the normal `/auth/quickbooks` OAuth callback.
+
 You can deploy with Vercel's Git integration or with:
 
 ```bash
@@ -68,6 +83,8 @@ vercel --prod
 
 - The app requests the `com.intuit.quickbooks.accounting` scope.
 - The OAuth callback is handled by `/auth/quickbooks`.
+- QuickBooks App Store install/reconnect flows should start at
+  `/auth/quickbooks/install`.
 - Tokens are stored in an encrypted, HTTP-only cookie so the session can survive
   Vercel serverless function invocations without a database.
 - QuickAuth keeps a remembered encrypted token cookie after local sign-out so a

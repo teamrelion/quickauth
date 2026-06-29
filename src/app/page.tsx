@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { CopyMcpPromptButton } from "./copy-mcp-prompt-button";
 import {
+  QUICKBOOKS_REMEMBERED_SESSION_COOKIE,
   QUICKBOOKS_SESSION_COOKIE,
   fetchCompanyName,
   getQuickBooksEnvironment,
@@ -24,6 +25,10 @@ export default async function Home({ searchParams }: HomeProps) {
   const session = getQuickBooksSession(
     cookieStore.get(QUICKBOOKS_SESSION_COOKIE)?.value,
   );
+  const rememberedSession = getQuickBooksSession(
+    cookieStore.get(QUICKBOOKS_REMEMBERED_SESSION_COOKIE)?.value,
+  );
+  const hasSavedConnection = Boolean(!session && rememberedSession);
   const message = getPageMessage(params);
   const companyResult =
     session && isQuickBooksAccessTokenFresh(session)
@@ -77,14 +82,18 @@ export default async function Home({ searchParams }: HomeProps) {
             realmId={session.realmId}
           />
         ) : (
-          <SignedOutView />
+          <SignedOutView hasSavedConnection={hasSavedConnection} />
         )}
       </div>
     </main>
   );
 }
 
-function SignedOutView() {
+function SignedOutView({
+  hasSavedConnection,
+}: {
+  hasSavedConnection: boolean;
+}) {
   return (
     <section className="flex flex-1 flex-col justify-center py-16">
       <div className="max-w-2xl">
@@ -95,16 +104,18 @@ function SignedOutView() {
           Connect a QuickBooks company and copy your setup prompt.
         </h1>
         <p className="mt-5 max-w-xl text-lg leading-8 text-[#596151]">
-          Sign in with QuickBooks Online to authorize this app. After the OAuth
-          flow completes, you can copy the prompt that registers your
-          QuickBooks connection with Claude Code or Codex.
+          {hasSavedConnection
+            ? "Continue with the QuickBooks connection saved in this browser. You can copy the prompt that registers your QuickBooks connection with Claude Code or Codex."
+            : "Sign in with QuickBooks Online to authorize this app. After the OAuth flow completes, you can copy the prompt that registers your QuickBooks connection with Claude Code or Codex."}
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <a
             href="/auth/quickbooks"
             className="rounded bg-[#2ca01c] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#238719]"
           >
-            Sign in with QuickBooks
+            {hasSavedConnection
+              ? "Continue with saved QuickBooks"
+              : "Sign in with QuickBooks"}
           </a>
           <Link
             href="/eula"
@@ -201,6 +212,13 @@ function getPageMessage({
     return {
       kind: "notice" as const,
       text: "Connected to QuickBooks Online.",
+    };
+  }
+
+  if (noticeCode === "installed") {
+    return {
+      kind: "notice" as const,
+      text: "QuickAuth was installed as a QuickBooks integration.",
     };
   }
 

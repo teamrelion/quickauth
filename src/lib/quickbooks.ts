@@ -7,6 +7,7 @@ import {
 import { deflateRawSync, inflateRawSync } from "zlib";
 
 export type QuickBooksEnvironment = "sandbox" | "production";
+export type QuickBooksAuthorizationIntent = "connect" | "install";
 
 type TokenResponse = {
   access_token: string;
@@ -36,6 +37,16 @@ export type CustomerSummary = {
   balance: number | null;
   active: boolean | null;
   lastUpdatedTime: string;
+};
+
+type QuickBooksCookieStore = {
+  get(name: string): { value: string } | undefined;
+};
+
+export type StoredQuickBooksSession = {
+  cookieValue: string;
+  session: QuickBooksSession;
+  source: "active" | "remembered";
 };
 
 type QuickBooksCustomer = {
@@ -132,10 +143,16 @@ export function getQuickBooksRedirectUri(origin: string) {
   return process.env.QUICKBOOKS_REDIRECT_URI ?? `${origin}/auth/quickbooks`;
 }
 
-export function buildQuickBooksAuthorizationUrl(origin: string) {
+export function buildQuickBooksAuthorizationUrl(
+  origin: string,
+  options: {
+    forcePrompt?: boolean;
+    intent?: QuickBooksAuthorizationIntent;
+  } = {},
+) {
   const clientId = requireEnv("QUICKBOOKS_CLIENT_ID");
   const redirectUri = getQuickBooksRedirectUri(origin);
-  const state = crypto.randomUUID();
+  const state = `${options.intent ?? "connect"}.${crypto.randomUUID()}`;
   const authorizationUrl = new URL(AUTHORIZATION_ENDPOINT);
 
   authorizationUrl.searchParams.set("client_id", clientId);
@@ -143,6 +160,10 @@ export function buildQuickBooksAuthorizationUrl(origin: string) {
   authorizationUrl.searchParams.set("scope", ACCOUNTING_SCOPE);
   authorizationUrl.searchParams.set("redirect_uri", redirectUri);
   authorizationUrl.searchParams.set("state", state);
+
+  if (options.forcePrompt) {
+    authorizationUrl.searchParams.set("prompt", "login select_account");
+  }
 
   return {
     state,
@@ -215,6 +236,36 @@ export function getQuickBooksSession(cookieValue?: string) {
   }
 
   return session;
+}
+
+export function getStoredQuickBooksSession(
+  cookieStore: QuickBooksCookieStore,
+): StoredQuickBooksSession | undefined {
+  const activeCookieValue = cookieStore.get(QUICKBOOKS_SESSION_COOKIE)?.value;
+  const activeSession = getQuickBooksSession(activeCookieValue);
+
+  if (activeSession && activeCookieValue) {
+    return {
+      cookieValue: activeCookieValue,
+      session: activeSession,
+      source: "active",
+    };
+  }
+
+  const rememberedCookieValue = cookieStore.get(
+    QUICKBOOKS_REMEMBERED_SESSION_COOKIE,
+  )?.value;
+  const rememberedSession = getQuickBooksSession(rememberedCookieValue);
+
+  if (rememberedSession && rememberedCookieValue) {
+    return {
+      cookieValue: rememberedCookieValue,
+      session: rememberedSession,
+      source: "remembered",
+    };
+  }
+
+  return undefined;
 }
 
 export function getSessionCookieMaxAge(session: QuickBooksSession) {

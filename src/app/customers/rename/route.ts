@@ -3,17 +3,16 @@ import {
   QUICKBOOKS_REMEMBERED_SESSION_COOKIE,
   QUICKBOOKS_SESSION_COOKIE,
   encodeQuickBooksSessionCookie,
-  getQuickBooksSession,
   getSessionCookieOptions,
+  getStoredQuickBooksSession,
   renameCustomer,
 } from "@/lib/quickbooks";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
-  const session = getQuickBooksSession(
-    request.cookies.get(QUICKBOOKS_SESSION_COOKIE)?.value,
-  );
+  const storedSession = getStoredQuickBooksSession(request.cookies);
+  const session = storedSession?.session;
 
   if (!session) {
     return redirectHomeWithStatus(request, "rename_auth");
